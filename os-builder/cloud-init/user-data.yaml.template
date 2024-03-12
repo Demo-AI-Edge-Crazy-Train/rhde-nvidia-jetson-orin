@@ -15,6 +15,8 @@ yum_repos:
     gpgkey: http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
     name: Extra Packages for Enterprise Linux 9 - Release
 
+package_upgrade: true
+
 packages:
 - zsh
 - neofetch
@@ -145,6 +147,7 @@ write_files:
   content: |
     #!/bin/bash
     export OSTREE_ROOT="/var/www/ostree"
+    export OSTREE_TMP="/var/www/.tmp"
     export RPM_REPO_ROOT="/var/www/rpms"
     export ISO_ROOT="/var/www/iso"
     export PUBLIC_IP="$(curl -sfL ipinfo.io | jq -r .ip)"
@@ -154,8 +157,8 @@ write_files:
     function wait_for_compose () {
       status="$(compose_status "$1")"
 
+      echo "Waiting for build $1 to finish..."
       while [ "$status" == "RUNNING" ]; do
-        echo "Waiting for build $1 to finish..."
         sleep 5
         status="$(compose_status "$1")"
       done
@@ -188,7 +191,7 @@ write_files:
     # Configure Nginx
     systemctl enable --now nginx.service
     mkdir -p /var/www
-    restorecon -Rv /var/www
+    restorecon -R /var/www
     sed -i.${EPOCHREALTIME:-bak} 's|/usr/share/nginx/html|/var/www|g' /etc/nginx/nginx.conf
     systemctl restart nginx.service
 
@@ -220,7 +223,6 @@ write_files:
     distro = "rhel-93"
     EOF
     BUILDID=$(composer-cli compose start-ostree minimal-rhel9 edge-commit | awk '{print $2}')
-    echo "Build $BUILDID is running..."
     wait_for_compose "$BUILDID"
     composer-cli compose image "$BUILDID" --filename /tmp
     mkdir -p "/tmp/${BUILDID}-commit"
@@ -233,8 +235,8 @@ write_files:
     mkdir -p /tmp/empty-tree
     ostree --repo=$OSTREE_ROOT commit -b "empty" --tree=dir=/tmp/empty-tree
 
-    # Create a directory to store ISOs
-    mkdir -p "$ISO_ROOT"
+    # Create misc. directories
+    mkdir -p "$ISO_ROOT" "$OSTREE_TMP"
 
     # Build the edge installer
     composer-cli blueprints push /dev/fd/0 <<EOF
@@ -246,16 +248,14 @@ write_files:
     packages = []
     EOF
     BUILDID=$(composer-cli compose start-ostree --url http://$PUBLIC_IP/ostree/ --ref empty edge-installer edge-installer | awk '{print $2}')
-    echo "Build $BUILDID is running..."
     wait_for_compose "$BUILDID"
-    composer-cli compose image "${BUILDID}" --filename /tmp
-    cp "/tmp/${BUILDID}-installer.iso" "$ISO_ROOT/edge-installer-empty-ostree.iso"
-    rm -f "/tmp/${BUILDID}-installer.iso"
+    composer-cli compose image "${BUILDID}" --filename "$ISO_ROOT/edge-installer-empty-ostree.iso"
     composer-cli compose delete "${BUILDID}"
 
     # Fix permissions on /var/www
     chown root:admins -R /var/www
-    chmod o+rX,g+w -R /var/www
+    chmod o+rX,g+rwX -R /var/www
+    restorecon -RF /var/www
 
     # Finish the post-install as a regular user
     sudo -i -u ${CLOUD_INIT_ADMIN_USERNAME} /usr/local/bin/post-install-user.sh

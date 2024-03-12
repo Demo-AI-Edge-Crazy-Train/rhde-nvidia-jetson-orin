@@ -2,6 +2,8 @@
 
 set -Eeuo pipefail
 
+KERNEL_CMDLINE="console=ttyTCU0 inst.vnc"
+
 for source_file in sources/*.toml; do
     composer-cli sources add "$source_file"
 done
@@ -13,18 +15,16 @@ for blueprint_file in blueprints/*.toml; do
     
     echo "Building ostree for $blueprint..."
     BUILDID=$(composer-cli compose start-ostree "$blueprint" edge-commit --url "http://$PUBLIC_IP/ostree/" --ref "rhel/9/$(uname -m)/$blueprint" --parent "rhel/9/$(uname -m)/edge" | awk '{print $2}')
-    echo "Build $BUILDID is running..."
     wait_for_compose "$BUILDID"
     composer-cli compose image "${BUILDID}" --filename /tmp
-    mkdir -p "/tmp/${BUILDID}-commit"
-    tar -xf "/tmp/${BUILDID}-commit.tar" -C "/tmp/${BUILDID}-commit"
-    ostree --repo=$OSTREE_ROOT pull-local --untrusted "/tmp/${BUILDID}-commit/repo"
+    mkdir -p "$OSTREE_TMP/${BUILDID}-commit"
+    tar -xf "/tmp/${BUILDID}-commit.tar" -C "$OSTREE_TMP/${BUILDID}-commit"
+    ostree --repo=$OSTREE_ROOT pull-local --untrusted "$OSTREE_TMP/${BUILDID}-commit/repo"
     rm -rf "/tmp/${BUILDID}-commit" "/tmp/${BUILDID}-commit.tar"
     composer-cli compose delete "${BUILDID}"
 
     echo "Building edge-installer for $blueprint..."
-    BUILDID=$(composer-cli compose start-ostree --url "http://$PUBLIC_IP/ostree/"/ --ref "rhel/9/$(uname -m)/$blueprint" edge-installer edge-installer | awk '{print $2}')
-    echo "Build $BUILDID is running..."
+    BUILDID=$(composer-cli compose start-ostree --url "http://$PUBLIC_IP/ostree/" --ref "rhel/9/$(uname -m)/$blueprint" edge-installer edge-installer | awk '{print $2}')
     wait_for_compose "$BUILDID"
     composer-cli compose image "${BUILDID}" --filename "$ISO_ROOT/edge-installer-$blueprint.iso"
     
@@ -33,18 +33,18 @@ for blueprint_file in blueprints/*.toml; do
         kickstart_file="kickstarts/$blueprint.cfg"
         kickstart="$(basename "$kickstart_file" .cfg)"
         ksvalidator "$kickstart_file" || echo "Kickstart has errors, please fix them!"
-        mkksiso -r "inst.ks inst.stage2" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-$blueprint.iso" "$ISO_ROOT/edge-installer-$blueprint-with-kickstart.iso"
+        mkksiso -r "inst.ks inst.stage2" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-$blueprint.iso" "$ISO_ROOT/edge-installer-$blueprint-with-kickstart.iso"
     fi
 
     composer-cli compose delete "${BUILDID}"
 done
 
 for kickstart_file in kickstarts/*.cfg; do
-    echo "Processing kickstart $blueprint..."
     kickstart="$(basename "$kickstart_file" .cfg)"
+    echo "Processing kickstart $kickstart..."
     if [ ! -f "blueprints/$kickstart.toml" ]; then
         echo "Embedding standalone kickstart $kickstart in generic edge installer..."
         ksvalidator "$kickstart_file" || echo "Kickstart has errors, please fix them!"
-        mkksiso -r "inst.ks inst.stage2" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-empty-ostree.iso" "$ISO_ROOT/edge-installer-kickstart-$kickstart.iso"
+        mkksiso -r "inst.ks inst.stage2" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-empty-ostree.iso" "$ISO_ROOT/edge-installer-kickstart-$kickstart.iso"
     fi
 done
