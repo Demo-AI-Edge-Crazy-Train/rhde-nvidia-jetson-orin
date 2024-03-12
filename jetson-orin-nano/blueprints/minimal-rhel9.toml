@@ -1,0 +1,6 @@
+name = "minimal-rhel9"
+description = "minimal blueprint for ostree commit"
+version = "1.1.0"
+modules = []
+groups = []
+distro = "rhel-93"

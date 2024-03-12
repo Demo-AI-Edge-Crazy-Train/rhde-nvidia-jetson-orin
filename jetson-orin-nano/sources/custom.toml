@@ -1,0 +1,7 @@
+check_gpg = false
+check_ssl = false
+id = "custom"
+name = "custom packages for RHEL"
+system = false
+type = "yum-baseurl"
+url = "file:///var/www/rpms"

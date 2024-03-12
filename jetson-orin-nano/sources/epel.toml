@@ -1,0 +1,8 @@
+id = "epel"
+name = "Extra Packages for Enterprise Linux"
+type = "yum-baseurl"
+url = "http://mirror.in2p3.fr/pub/epel/9/Everything/aarch64/"
+check_gpg = false
+check_ssl = false
+system = false
+rhsm = false

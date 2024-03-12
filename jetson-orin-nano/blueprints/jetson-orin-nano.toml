@@ -1,0 +1,41 @@
+name = "jetson-orin-nano"
+description = "Red Hat Device Edge for the Jetson Orin Nano"
+version = "0.0.1"
+modules = []
+groups = []
+
+[[packages]]
+name = "cockpit"
+
+[[packages]]
+name = "microshift"
+version = "*"
+
+[[packages]]
+name = "cockpit-system"
+
+[customizations]
+hostname = "train-controller.local"
+
+[customizations.services]
+enabled = ["cockpit.socket", "sshd", "microshift"]
+
+[customizations.timezone]
+timezone = "Europe/Paris"
+ntpservers = ["0.fr.pool.ntp.org", "1.fr.pool.ntp.org"]
+
+[customizations.locale]
+languages = ["fr_FR.UTF-8"]
+keyboard = "fr"
+
+[customizations.firewall]
+ports = ["22:tcp", "30000:tcp", "9090:tcp", "6443:tcp"]
+
+[[customizations.user]]
+name = "admin"
+description = "admin"
+password = '__ADMIN_PASSWORD__'
+key = "__ADMIN_SSH_PUBLIC_KEY__"
+home = "/home/admin/"
+shell = "/usr/bin/bash"
+groups = ["users", "wheel"]

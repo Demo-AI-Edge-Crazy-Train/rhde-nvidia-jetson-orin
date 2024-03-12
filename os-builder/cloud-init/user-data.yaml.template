@@ -205,6 +205,31 @@ write_files:
     gpgcheck = 0
     EOF
 
+    # Enable the required repos for Microshift
+    subscription-manager config --rhsm.manage_repos=1
+    subscription-manager repos --enable rhocp-4.14-for-rhel-9-$(uname -m)-rpms --enable fast-datapath-for-rhel-9-$(uname -m)-rpms
+
+    # Finish the post-install as a regular user
+    sudo -i -u ${CLOUD_INIT_ADMIN_USERNAME} /usr/local/bin/post-install-user.sh
+
+    exit 0
+  permissions: '0755'
+- path: /usr/local/bin/post-install-user.sh
+  content: |
+    #!/bin/bash
+
+    set -Eeuo pipefail
+
+    git clone https://github.com/Demo-AI-Edge-Crazy-Train/rhde-nvidia-jetson-orin.git $HOME/rhde
+    cd $HOME/rhde/jetson-orin-nano
+    for source in sources/*.toml; do
+      composer-cli sources add $source
+    done
+
+    for blueprint in blueprints/*.toml; do
+      composer-cli sources add $blueprint
+    done
+
     exit 0
   permissions: '0755'
 
