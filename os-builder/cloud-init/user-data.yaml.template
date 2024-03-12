@@ -1,0 +1,229 @@
+#cloud-config
+
+# Generate a key on https://access.redhat.com/management/activation_keys
+rh_subscription:
+  activation-key: ${CLOUD_INIT_RH_ACTIVATION_KEY}
+  org: ${CLOUD_INIT_RH_ORGANIZATION_ID}
+  auto-attach: True
+
+yum_repos:
+  epel:
+    baseurl: https://mirror.in2p3.fr/pub/epel/9/Everything/$basearch/
+    enabled: true
+    failovermethod: priority
+    gpgcheck: true
+    gpgkey: http://download.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-9
+    name: Extra Packages for Enterprise Linux 9 - Release
+
+packages:
+- zsh
+- neofetch
+- podman
+- buildah
+- skopeo
+- jq
+- curl
+- vim-enhanced
+- git
+- bzip2
+- tmux
+- htop
+- iotop
+- osbuild-composer
+- composer-cli
+- cockpit-composer
+- nginx
+- createrepo
+- lorax
+- pykickstart
+- mkpasswd
+- rpm-build
+- rpmdevtools
+
+write_files:
+- path: /etc/dnf/dnf.conf
+  content: |
+    [main]
+    best=True
+    skip_if_unavailable=True
+    install_weak_deps=False
+  owner: root:root
+  permissions: '0644'
+- path: /etc/neofetch/config.conf
+  content: |
+    print_info() {
+        info title
+        info underline
+        info "OS" distro
+        info "Host" model
+        info "Kernel" kernel
+        info "Uptime" uptime
+        info "Shell" shell
+        info "CPU" cpu
+        info "Memory" memory
+        info "CPU Usage" cpu_usage
+        info "Disk" disk
+        info "Local IP" local_ip
+        info "Public IP" public_ip
+        info cols
+    }
+    title_fqdn="off"
+    kernel_shorthand="on"
+    distro_shorthand="off"
+    os_arch="on"
+    uptime_shorthand="on"
+    memory_percent="on"
+    memory_unit="gib"
+    package_managers="on"
+    shell_path="off"
+    shell_version="on"
+    speed_type="bios_limit"
+    speed_shorthand="off"
+    cpu_brand="on"
+    cpu_speed="on"
+    cpu_cores="logical"
+    cpu_temp="off"
+    gpu_brand="on"
+    gpu_type="all"
+    refresh_rate="off"
+    gtk_shorthand="off"
+    gtk2="on"
+    gtk3="on"
+    public_ip_host="http://ident.me"
+    public_ip_timeout=2
+    de_version="on"
+    disk_show=('/')
+    disk_subtitle="mount"
+    disk_percent="on"
+    music_player="auto"
+    song_format="%artist% - %album% - %title%"
+    song_shorthand="off"
+    mpc_args=()
+    colors=(distro)
+    bold="on"
+    underline_enabled="on"
+    underline_char="-"
+    separator=":"
+    block_range=(0 15)
+    color_blocks="off"
+    block_width=3
+    block_height=1
+    col_offset="auto"
+    bar_char_elapsed="-"
+    bar_char_total="="
+    bar_border="on"
+    bar_length=15
+    bar_color_elapsed="distro"
+    bar_color_total="distro"
+    cpu_display="off"
+    memory_display="off"
+    battery_display="off"
+    disk_display="off"
+    image_backend="ascii"
+    image_source="auto"
+    ascii_distro="auto"
+    ascii_colors=(distro)
+    ascii_bold="on"
+    image_loop="off"
+    thumbnail_dir="${XDG_CACHE_HOME:-${HOME}/.cache}/thumbnails/neofetch"
+    crop_mode="normal"
+    crop_offset="center"
+    image_size="auto"
+    gap=3
+    yoffset=0
+    xoffset=0
+    background_color=
+    stdout="off"
+- path: /etc/profile.d/neofetch.sh
+  content: |
+    #!/bin/bash
+    if [ -n "$PS1" ]; then
+      neofetch --config /etc/neofetch/config.conf
+    fi
+  permissions: '0755'
+- path: /etc/profile.d/weldr.sh
+  content: |
+    #!/bin/bash
+    OSTREE_ROOT="/var/www/ostree"
+    RPM_REPO_ROOT="/var/www/rpms"
+    PUBLIC_IP="$(curl -sfL ipinfo.io | jq -r .ip)"
+    function compose_status () {
+      composer-cli compose info "$1" | awk 'NR == 1 { print $2 }'
+    }
+    function wait_for_compose () {
+      status="$(compose_status "$1")"
+
+      while [ "$status" == "RUNNING" ]; do
+        echo "Waiting for build $1 to finish..."
+        sleep 5
+        status="$(compose_status "$1")"
+      done
+
+      echo "Build status of $1 is: $status."
+      if [ "$status" == "FINISHED" ]; then
+        return 0
+      fi
+
+      return 1
+    }
+  permissions: '0755'
+- path: /usr/local/bin/post-install.sh
+  content: |
+    #!/bin/bash
+
+    set -Eeuo pipefail
+
+    # Source global variables
+    . /etc/profile.d/weldr.sh
+
+    # Configure os-builder
+    systemctl enable --now osbuild-composer.socket
+    systemctl enable --now cockpit.socket
+    systemctl restart osbuild-composer
+    usermod -a -G weldr "${CLOUD_INIT_ADMIN_USERNAME}"
+
+    # Configure Nginx
+    systemctl enable --now nginx.service
+    mkdir -p /var/www
+    restorecon -Rv /var/www
+    sed -i.${EPOCHREALTIME:-bak} 's|/usr/share/nginx/html|/var/www|g' /etc/nginx/nginx.conf
+    systemctl restart nginx.service
+
+    # Create an empty ostree
+    mkdir -p "$OSTREE_ROOT" /tmp/empty-tree
+    ostree --repo=$OSTREE_ROOT init
+    ostree --repo=$OSTREE_ROOT commit -b "empty" --tree=dir=/tmp/empty-tree
+
+    # Create the RPM repository
+    mkdir -p "$RPM_REPO_ROOT"
+    createrepo "$RPM_REPO_ROOT"
+    cat > /etc/yum.repos.d/custom.repo <<EOF
+    [custom]
+    name = Custom RPMS  
+    baseurl = file://$RPM_REPO_ROOT
+    enabled = 1  
+    gpgcheck = 0
+    EOF
+
+    exit 0
+  permissions: '0755'
+
+runcmd:
+# Disable SSH password authentication
+- [ "sed", "-i.post-install", "-e", "s/PasswordAuthentication no/PasswordAuthentication yes/", "/etc/ssh/sshd_config" ]
+- [ "systemctl", "restart", "sshd" ]
+# Enable sudo without password
+- [ "sed", "-i.post-install", "-e", "s/^%wheel\tALL=(ALL)\tALL/%wheel  ALL=(ALL)       NOPASSWD: ALL/", "/etc/sudoers" ]
+# Run the post-install script
+- [ "/usr/local/bin/post-install.sh" ]
+
+users:
+- name: ${CLOUD_INIT_ADMIN_USERNAME}
+  gecos: Admin
+  shell: /bin/bash
+  primary_group: wheel
+  lock_passwd: false
+  # mkpasswd -m sha512crypt
+  passwd: ${CLOUD_INIT_ADMIN_PASSWORD}
+  ssh_authorized_keys:
+  - ${CLOUD_INIT_ADMIN_SSH_KEY}
