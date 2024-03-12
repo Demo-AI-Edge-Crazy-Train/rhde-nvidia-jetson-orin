@@ -144,9 +144,10 @@ write_files:
 - path: /etc/profile.d/weldr.sh
   content: |
     #!/bin/bash
-    OSTREE_ROOT="/var/www/ostree"
-    RPM_REPO_ROOT="/var/www/rpms"
-    PUBLIC_IP="$(curl -sfL ipinfo.io | jq -r .ip)"
+    export OSTREE_ROOT="/var/www/ostree"
+    export RPM_REPO_ROOT="/var/www/rpms"
+    export ISO_ROOT="/var/www/iso"
+    export PUBLIC_IP="$(curl -sfL ipinfo.io | jq -r .ip)"
     function compose_status () {
       composer-cli compose info "$1" | awk 'NR == 1 { print $2 }'
     }
@@ -166,6 +167,8 @@ write_files:
 
       return 1
     }
+    export -f compose_status
+    export -f wait_for_compose
   permissions: '0755'
 - path: /usr/local/bin/post-install.sh
   content: |
@@ -190,9 +193,7 @@ write_files:
     systemctl restart nginx.service
 
     # Create an empty ostree
-    mkdir -p "$OSTREE_ROOT" /tmp/empty-tree
-    ostree --repo=$OSTREE_ROOT init
-    ostree --repo=$OSTREE_ROOT commit -b "empty" --tree=dir=/tmp/empty-tree
+    ostree --repo=$OSTREE_ROOT init --mode=archive-z2
 
     # Create the RPM repository
     mkdir -p "$RPM_REPO_ROOT"
@@ -209,6 +210,53 @@ write_files:
     subscription-manager config --rhsm.manage_repos=1
     subscription-manager repos --enable rhocp-4.14-for-rhel-9-$(uname -m)-rpms --enable fast-datapath-for-rhel-9-$(uname -m)-rpms
 
+    # Build the Minimal RHEL9 ostree
+    composer-cli blueprints push /dev/fd/0 <<EOF
+    name = "minimal-rhel9"
+    description = "minimal blueprint for ostree commit"
+    version = "1.1.0"
+    modules = []
+    groups = []
+    distro = "rhel-93"
+    EOF
+    BUILDID=$(composer-cli compose start-ostree minimal-rhel9 edge-commit | awk '{print $2}')
+    echo "Build $BUILDID is running..."
+    wait_for_compose "$BUILDID"
+    composer-cli compose image "$BUILDID" --filename /tmp
+    mkdir -p "/tmp/${BUILDID}-commit"
+    tar -xf "/tmp/${BUILDID}-commit.tar" -C "/tmp/${BUILDID}-commit"
+    ostree --repo=$OSTREE_ROOT pull-local --untrusted "/tmp/${BUILDID}-commit/repo"
+    rm -rf "/tmp/${BUILDID}-commit" "/tmp/${BUILDID}-commit.tar"
+    composer-cli compose delete "${BUILDID}"
+
+    # Create an empty commit
+    mkdir -p /tmp/empty-tree
+    ostree --repo=$OSTREE_ROOT commit -b "empty" --tree=dir=/tmp/empty-tree
+
+    # Create a directory to store ISOs
+    mkdir -p "$ISO_ROOT"
+
+    # Build the edge installer
+    composer-cli blueprints push /dev/fd/0 <<EOF
+    name = "edge-installer"
+    description = ""
+    version = "0.0.0"
+    modules = []
+    groups = []
+    packages = []
+    EOF
+    BUILDID=$(composer-cli compose start-ostree --url http://$PUBLIC_IP/ostree/ --ref empty edge-installer edge-installer | awk '{print $2}')
+    echo "Build $BUILDID is running..."
+    wait_for_compose "$BUILDID"
+    composer-cli compose image "${BUILDID}" --filename /tmp
+    cp "/tmp/${BUILDID}-installer.iso" "$ISO_ROOT/edge-installer-empty-ostree.iso"
+    rm -f "/tmp/${BUILDID}-installer.iso"
+    composer-cli compose delete "${BUILDID}"
+
+    # Fix permissions on /var/www
+    chown root:admins -R /var/www
+    chmod o+rX,g+w -R /var/www
+
     # Finish the post-install as a regular user
     sudo -i -u ${CLOUD_INIT_ADMIN_USERNAME} /usr/local/bin/post-install-user.sh
 
@@ -222,13 +270,7 @@ write_files:
 
     git clone https://github.com/Demo-AI-Edge-Crazy-Train/rhde-nvidia-jetson-orin.git $HOME/rhde
     cd $HOME/rhde/jetson-orin-nano
-    for source in sources/*.toml; do
-      composer-cli sources add $source
-    done
-
-    for blueprint in blueprints/*.toml; do
-      composer-cli sources add $blueprint
-    done
+    #./build.sh
 
     exit 0
   permissions: '0755'
@@ -242,11 +284,14 @@ runcmd:
 # Run the post-install script
 - [ "/usr/local/bin/post-install.sh" ]
 
+groups:
+- admins: [wheel]
+
 users:
 - name: ${CLOUD_INIT_ADMIN_USERNAME}
   gecos: Admin
   shell: /bin/bash
-  primary_group: wheel
+  primary_group: admin
   lock_passwd: false
   # mkpasswd -m sha512crypt
   passwd: ${CLOUD_INIT_ADMIN_PASSWORD}
