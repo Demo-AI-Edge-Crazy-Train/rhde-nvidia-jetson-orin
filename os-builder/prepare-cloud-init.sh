@@ -11,6 +11,7 @@ if [ -z "${CLOUD_INIT_RH_ACTIVATION_KEY:-}" ]; then read -p "Red Hat Activation 
 if [ -z "${CLOUD_INIT_RH_ORGANIZATION_ID:-}" ]; then read -p "Red Hat Organization Id: " CLOUD_INIT_RH_ORGANIZATION_ID; fi
 if [ -z "${CLOUD_INIT_ADMIN_USERNAME:-}" ]; then read -p "Admin Username: " CLOUD_INIT_ADMIN_USERNAME; fi
 if [ -z "${CLOUD_INIT_ADMIN_SSH_KEY:-}" ]; then read -p "Admin SSH key: " CLOUD_INIT_ADMIN_SSH_KEY; fi
+if [ -z "${CLOUD_INIT_S3_BUCKET_NAME:-}" ]; then read -p "S3 Bucket name: " CLOUD_INIT_S3_BUCKET_NAME; fi
 if [ -z "${CLOUD_INIT_ADMIN_PASSWORD:-}" ]; then
   read -s -p "Admin Password: " password
   CLOUD_INIT_ADMIN_PASSWORD="$(echo -n "$password" | mkpasswd -sm sha512crypt)"

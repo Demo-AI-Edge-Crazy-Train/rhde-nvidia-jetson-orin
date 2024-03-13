@@ -20,6 +20,10 @@ variable "route53_zone" {
   type = string
 }
 
+variable "s3_bucket_name" {
+  type = string
+}
+
 data "aws_ami" "rhel" {
   most_recent = true
 
@@ -39,6 +43,63 @@ data "aws_ami" "rhel" {
   }
 
   owners = ["309956199498"] # amazon
+}
+
+resource "aws_iam_policy" "s3_policy" {
+  name        = "WriteAccessToS3Bucket"
+  description = "Policy to let the EC2 instance access the S3 bucket"
+
+  policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action   = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+        Resource = [
+          "arn:aws:s3:::${var.s3_bucket_name}",
+          "arn:aws:s3:::${var.s3_bucket_name}/*"
+        ],
+        Effect   = "Allow",
+      },
+    ],
+  })
+
+  tags = {
+    Name = var.tag_name
+  }
+}
+
+resource "aws_iam_role" "ec2_s3_access_role" {
+  name = "AssumesWriteAccessToS3Bucket"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17",
+    Statement = [
+      {
+        Action    = "sts:AssumeRole",
+        Principal = {"Service": "ec2.amazonaws.com"},
+        Effect    = "Allow",
+        Sid       = "",
+      },
+    ],
+  })
+
+  tags = {
+    Name = var.tag_name
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "s3_policy_attachment" {
+  role       = aws_iam_role.ec2_s3_access_role.name
+  policy_arn = aws_iam_policy.s3_policy.arn
+}
+
+resource "aws_iam_instance_profile" "ec2_profile" {
+  name = "Ec2AssumesWriteAccessToS3Bucket"
+  role = aws_iam_role.ec2_s3_access_role.name
+
+  tags = {
+    Name = var.tag_name
+  }
 }
 
 resource "aws_vpc" "lab_vpc" {
@@ -135,6 +196,7 @@ resource "aws_instance" "lab_rhel" {
   vpc_security_group_ids      = [aws_security_group.lab_rhel.id]
   user_data                   = filebase64("cloud-init/user-data.yaml")
   associate_public_ip_address = true
+  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
 
   credit_specification {
     cpu_credits = "unlimited"
@@ -143,6 +205,15 @@ resource "aws_instance" "lab_rhel" {
   root_block_device {
     volume_size = 100
   }
+
+  tags = {
+    Name = var.tag_name
+  }
+}
+
+resource "aws_eip" "lab_eip" {
+  instance = aws_instance.lab_rhel.id
+  vpc      = true
 
   tags = {
     Name = var.tag_name
@@ -159,7 +230,7 @@ resource "aws_route53_record" "os_builder_a_record" {
   name    = "os-builder.${var.route53_zone}"
   type    = "A"
   ttl     = "300"
-  records = [aws_instance.lab_rhel.public_ip]
+  records = [aws_eip.lab_eip.public_ip]
 }
 
 output "public_ip" {

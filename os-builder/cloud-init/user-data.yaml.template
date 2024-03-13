@@ -41,6 +41,7 @@ packages:
 - mkpasswd
 - rpm-build
 - rpmdevtools
+- rclone
 
 write_files:
 - path: /etc/dnf/dnf.conf
@@ -150,6 +151,7 @@ write_files:
     export OSTREE_TMP="/var/www/.tmp"
     export RPM_REPO_ROOT="/var/www/rpms"
     export ISO_ROOT="/var/www/iso"
+    export S3_BUCKET_NAME="${CLOUD_INIT_S3_BUCKET_NAME}"
     export PUBLIC_IP="$(curl -sfL ipinfo.io | jq -r .ip)"
     function compose_status () {
       composer-cli compose info "$1" | awk 'NR == 1 { print $2 }'
@@ -195,11 +197,15 @@ write_files:
     sed -i.${EPOCHREALTIME:-bak} 's|/usr/share/nginx/html|/var/www|g' /etc/nginx/nginx.conf
     systemctl restart nginx.service
 
+    # Configure rclone
+    rclone config create aws s3 provider=AWS region="eu-west-3" env_auth=true
+
     # Create an empty ostree
-    ostree --repo=$OSTREE_ROOT init --mode=archive-z2
+    ostree --repo=$OSTREE_ROOT init --mode=archive
 
     # Create the RPM repository
     mkdir -p "$RPM_REPO_ROOT"
+    rclone sync --include "*.rpm" "aws:$S3_BUCKET_NAME/" "$RPM_REPO_ROOT"
     createrepo "$RPM_REPO_ROOT"
     cat > /etc/yum.repos.d/custom.repo <<EOF
     [custom]
