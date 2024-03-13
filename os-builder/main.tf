@@ -16,6 +16,10 @@ variable "tag_name" {
   default = "os-builder-arm64"
 }
 
+variable "route53_zone" {
+  type = string
+}
+
 data "aws_ami" "rhel" {
   most_recent = true
 
@@ -143,6 +147,19 @@ resource "aws_instance" "lab_rhel" {
   tags = {
     Name = var.tag_name
   }
+}
+
+data "aws_route53_zone" "lab_zone" {
+  name         = var.route53_zone
+  private_zone = false
+}
+
+resource "aws_route53_record" "os_builder_a_record" {
+  zone_id = data.aws_route53_zone.lab_zone.zone_id
+  name    = "os-builder.${var.route53_zone}"
+  type    = "A"
+  ttl     = "300"
+  records = [aws_instance.lab_rhel.public_ip]
 }
 
 output "public_ip" {
