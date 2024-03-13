@@ -290,6 +290,13 @@ write_files:
     # Finish the post-install as a regular user
     sudo -i -u ${CLOUD_INIT_ADMIN_USERNAME} /usr/local/bin/post-install-user.sh
 
+    # Install the specific version of the Kernel needed by the Nvidia kernel modules
+    # because right now composer-cli is hard coded to embed the kernel of the host.
+    dnf install -y kernel-5.14.0-362.13.1.el9_3
+    
+    # Initiate a reboot within two minutes
+    shutdown -r +2
+
     exit 0
   permissions: '0755'
 - path: /usr/local/bin/post-install-user.sh
@@ -300,7 +307,6 @@ write_files:
 
     git clone https://github.com/Demo-AI-Edge-Crazy-Train/rhde-nvidia-jetson-orin.git $HOME/rhde
     cd $HOME/rhde/jetson-orin-nano
-    #./build.sh
 
     exit 0
   permissions: '0755'
