@@ -12,7 +12,7 @@ provider "aws" {
 }
 
 variable "tag_name" {
-  type = string
+  type    = string
   default = "os-builder-arm64"
 }
 
@@ -38,7 +38,7 @@ data "aws_ami" "rhel" {
   }
 
   filter {
-    name = "architecture"
+    name   = "architecture"
     values = ["arm64"]
   }
 
@@ -53,12 +53,12 @@ resource "aws_iam_policy" "s3_policy" {
     Version = "2012-10-17",
     Statement = [
       {
-        Action   = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
+        Action = ["s3:ListBucket", "s3:GetObject", "s3:PutObject", "s3:DeleteObject"],
         Resource = [
           "arn:aws:s3:::${var.s3_bucket_name}",
           "arn:aws:s3:::${var.s3_bucket_name}/*"
         ],
-        Effect   = "Allow",
+        Effect = "Allow",
       },
     ],
   })
@@ -76,7 +76,7 @@ resource "aws_iam_role" "ec2_s3_access_role" {
     Statement = [
       {
         Action    = "sts:AssumeRole",
-        Principal = {"Service": "ec2.amazonaws.com"},
+        Principal = { "Service" : "ec2.amazonaws.com" },
         Effect    = "Allow",
         Sid       = "",
       },
@@ -196,7 +196,7 @@ resource "aws_instance" "lab_rhel" {
   vpc_security_group_ids      = [aws_security_group.lab_rhel.id]
   user_data                   = filebase64("cloud-init/user-data.yaml")
   associate_public_ip_address = true
-  iam_instance_profile = aws_iam_instance_profile.ec2_profile.name
+  iam_instance_profile        = aws_iam_instance_profile.ec2_profile.name
 
   credit_specification {
     cpu_credits = "unlimited"
