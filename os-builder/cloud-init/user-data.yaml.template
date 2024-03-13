@@ -52,6 +52,30 @@ write_files:
     install_weak_deps=False
   owner: root:root
   permissions: '0644'
+- path: /etc/yum.repos.d/nvidia.repo
+  content: |
+    [nvidia-container-toolkit]
+    name=nvidia-container-toolkit
+    baseurl=https://nvidia.github.io/libnvidia-container/stable/rpm/$basearch
+    repo_gpgcheck=1
+    gpgcheck=0
+    enabled=1
+    gpgkey=https://nvidia.github.io/libnvidia-container/gpgkey
+    sslverify=1
+    sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+
+    [nvidia-container-toolkit-experimental]
+    name=nvidia-container-toolkit-experimental
+    baseurl=https://nvidia.github.io/libnvidia-container/experimental/rpm/$basearch
+    repo_gpgcheck=1
+    gpgcheck=0
+    enabled=0
+    gpgkey=https://nvidia.github.io/libnvidia-container/gpgkey
+    sslverify=1
+    sslcacert=/etc/pki/tls/certs/ca-bundle.crt
+  owner: root:root
+  permissions: '0644'
+
 - path: /etc/neofetch/config.conf
   content: |
     print_info() {
