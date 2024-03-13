@@ -33,7 +33,7 @@ for blueprint_file in blueprints/*.toml; do
         kickstart_file="kickstarts/$blueprint.cfg"
         kickstart="$(basename "$kickstart_file" .cfg)"
         ksvalidator "$kickstart_file" || echo "Kickstart has errors, please fix them!"
-        mkksiso -r "inst.ks inst.stage2" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-$blueprint.iso" "$ISO_ROOT/edge-installer-$blueprint-with-kickstart.iso"
+        mkksiso -r "inst.ks" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-$blueprint.iso" "$ISO_ROOT/edge-installer-$blueprint-with-kickstart.iso"
     fi
 
     composer-cli compose delete "${BUILDID}"
@@ -45,6 +45,6 @@ for kickstart_file in kickstarts/*.cfg; do
     if [ ! -f "blueprints/$kickstart.toml" ]; then
         echo "Embedding standalone kickstart $kickstart in generic edge installer..."
         ksvalidator "$kickstart_file" || echo "Kickstart has errors, please fix them!"
-        mkksiso -r "inst.ks inst.stage2" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-empty-ostree.iso" "$ISO_ROOT/edge-installer-kickstart-$kickstart.iso"
+        mkksiso -r "inst.ks" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-empty-ostree.iso" "$ISO_ROOT/edge-installer-kickstart-$kickstart.iso"
     fi
 done
