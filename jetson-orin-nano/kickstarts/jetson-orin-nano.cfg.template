@@ -86,6 +86,7 @@ interface-name=wlP1p1s0
 [wifi]
 mode=infrastructure
 ssid=${KICKSTART_WIFI_SSID}
+cloned-mac-address=${KICKSTART_WIFI_MAC_ADDRESS}
 
 [wifi-security]
 auth-alg=open
