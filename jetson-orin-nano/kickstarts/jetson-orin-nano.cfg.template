@@ -61,6 +61,12 @@ network --hostname=train-controller.local
 ostreesetup --nogpg --osname=rhel --remote=edge --url="${KICKSTART_OSTREE_URL}" --ref="${KICKSTART_OSTREE_REF}"
 
 ##
+## User configuration
+##
+user --name="${KICKSTART_ADMIN_USERNAME}" --gecos=Admin --groups=wheel --password="${KICKSTART_ADMIN_PASSWORD}" --iscrypted
+sshkey --username="${KICKSTART_ADMIN_USERNAME}" "${KICKSTART_ADMIN_SSH_KEY}"
+
+##
 ## Pre-install scripts
 ##
 %pre --log=/var/log/kickstart_pre.log

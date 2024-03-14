@@ -2,6 +2,9 @@
 
 set -Eeuo pipefail
 
+echo "Preparing kickstarts from templates..."
+./prepare-kickstart.sh
+
 KERNEL_CMDLINE="console=ttyTCU0"
 
 for source_file in sources/*.toml; do
