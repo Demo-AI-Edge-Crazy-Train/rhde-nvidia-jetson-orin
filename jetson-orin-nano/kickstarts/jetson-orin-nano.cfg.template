@@ -109,4 +109,7 @@ firewall-offline-cmd --zone=trusted --add-source=169.254.169.1
 # Do not ask password for sudo
 sed -i.post-install -e "s/^%wheel\tALL=(ALL)\tALL/%wheel  ALL=(ALL)       NOPASSWD: ALL/" /etc/sudoers
 
+# Disable password authentication over SSH
+sed -i.post-install -e "s/PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_config
+
 %end
