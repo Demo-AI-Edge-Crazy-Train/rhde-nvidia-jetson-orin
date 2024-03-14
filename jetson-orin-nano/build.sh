@@ -43,11 +43,8 @@ done
 
 for kickstart_file in kickstarts/*.cfg; do
     kickstart="$(basename "$kickstart_file" .cfg)"
-    echo "Processing kickstart $kickstart..."
-    if [ ! -f "blueprints/$kickstart.toml" ]; then
-        echo "Embedding standalone kickstart $kickstart in generic edge installer..."
-        ksvalidator "$kickstart_file" || echo "Kickstart has errors, please fix them!"
-        rm -f "$ISO_ROOT/edge-installer-kickstart-$kickstart.iso"
-        mkksiso -r "inst.ks" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-empty-ostree.iso" "$ISO_ROOT/edge-installer-kickstart-$kickstart.iso"
-    fi
+    echo "Embedding standalone kickstart $kickstart in generic edge installer..."
+    ksvalidator "$kickstart_file" || echo "Kickstart has errors, please fix them!"
+    rm -f "$ISO_ROOT/edge-installer-kickstart-$kickstart.iso"
+    mkksiso -r "inst.ks" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-empty-ostree.iso" "$ISO_ROOT/edge-installer-empty-ostree-with-kickstart-$kickstart.iso"
 done
