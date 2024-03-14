@@ -50,8 +50,8 @@ bootloader --append="console=ttyTCU0 crashkernel=1G-4G:256M,4G-64G:320M,64G-:576
 ## Network configuration
 ##
 
-# Configure the first network device
-network --onboot=yes --bootproto=dhcp --device=wlP1p1s0 --noipv6 --activate --hostname=train-controller.local --essid="${KICKSTART_WIFI_SSID}" --wpakey="${KICKSTART_WIFI_WPA_KEY}"
+# Configure the hostname
+network --hostname=train-controller.local
 
 ##
 ## Ostree installation
@@ -61,7 +61,14 @@ network --onboot=yes --bootproto=dhcp --device=wlP1p1s0 --noipv6 --activate --ho
 ostreesetup --nogpg --osname=rhel --remote=edge --url="${KICKSTART_OSTREE_URL}" --ref="${KICKSTART_OSTREE_REF}"
 
 ##
-## Post install scripts
+## Pre-install scripts
+##
+%pre --log=/var/log/kickstart_pre.log
+nmcli device wifi connect "${KICKSTART_WIFI_SSID}" password "${KICKSTART_WIFI_WPA_KEY}"
+%end
+
+##
+## Post-install scripts
 ##
 %post --log=/var/log/anaconda/post-install.log --erroronfail
 # Add the pull secret to CRI-O and set root user-only read/write permissions
@@ -69,6 +76,31 @@ cat > /etc/crio/openshift-pull-secret << 'EOF'
 ${KICKSTART_MICROSHIFT_PULL_SECRET}
 EOF
 chmod 600 /etc/crio/openshift-pull-secret
+
+cat > /etc/NetworkManager/system-connections/${KICKSTART_WIFI_SSID}.nmconnection <<"EOF"
+[connection]
+id=${KICKSTART_WIFI_SSID}
+type=wifi
+interface-name=wlP1p1s0
+
+[wifi]
+mode=infrastructure
+ssid=${KICKSTART_WIFI_SSID}
+
+[wifi-security]
+auth-alg=open
+key-mgmt=wpa-psk
+psk=${KICKSTART_WIFI_WPA_KEY}
+
+[ipv4]
+method=auto
+
+[ipv6]
+addr-gen-mode=default
+method=auto
+
+[proxy]
+EOF
 
 # Configure the firewall with the mandatory rules for MicroShift
 firewall-offline-cmd --zone=trusted --add-source=10.42.0.0/16
