@@ -23,6 +23,15 @@ for blueprint_file in blueprints/*.toml; do
     rm -rf "/tmp/${BUILDID}-commit" "/tmp/${BUILDID}-commit.tar"
     composer-cli compose delete "${BUILDID}"
 
+    if [ -f "kickstarts/$blueprint.cfg" ]; then
+        kickstart_file="kickstarts/$blueprint.cfg"
+        kickstart="$(basename "$kickstart_file" .cfg)"
+        echo "Embedding kickstart $kickstart in generic edge installer..."
+        ksvalidator "$kickstart_file" || echo "Kickstart has errors, please fix them!"
+        rm -f "$ISO_ROOT/edge-installer-empty-ostree-with-kickstart-$kickstart.iso"
+        mkksiso -r "inst.ks" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-empty-ostree.iso" "$ISO_ROOT/edge-installer-empty-ostree-with-kickstart-$kickstart.iso"
+    fi
+
     echo "Building edge-installer for $blueprint..."
     BUILDID=$(composer-cli compose start-ostree --url "http://$PUBLIC_IP/ostree/" --ref "rhel/9/$(uname -m)/$blueprint" edge-installer edge-installer | awk '{print $2}')
     wait_for_compose "$BUILDID"
@@ -43,8 +52,10 @@ done
 
 for kickstart_file in kickstarts/*.cfg; do
     kickstart="$(basename "$kickstart_file" .cfg)"
-    echo "Embedding standalone kickstart $kickstart in generic edge installer..."
-    ksvalidator "$kickstart_file" || echo "Kickstart has errors, please fix them!"
-    rm -f "$ISO_ROOT/edge-installer-kickstart-$kickstart.iso"
-    mkksiso -r "inst.ks" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-empty-ostree.iso" "$ISO_ROOT/edge-installer-empty-ostree-with-kickstart-$kickstart.iso"
+    if [ ! -f "blueprints/$kickstart.toml" ]; then
+        echo "Embedding standalone kickstart $kickstart in generic edge installer..."
+        ksvalidator "$kickstart_file" || echo "Kickstart has errors, please fix them!"
+        rm -f "$ISO_ROOT/edge-installer-empty-ostree-with-kickstart-$kickstart.iso"
+        mkksiso -r "inst.ks" -c "$KERNEL_CMDLINE" --ks "$kickstart_file" "$ISO_ROOT/edge-installer-empty-ostree.iso" "$ISO_ROOT/edge-installer-empty-ostree-with-kickstart-$kickstart.iso"
+    fi
 done
