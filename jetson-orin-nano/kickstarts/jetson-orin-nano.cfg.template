@@ -51,14 +51,14 @@ bootloader --append="console=ttyTCU0 crashkernel=1G-4G:256M,4G-64G:320M,64G-:576
 ##
 
 # Configure the first network device
-network  --bootproto=dhcp --device=enp1s0 --noipv6 --activate --hostname=train-controller.local
+network  --bootproto=dhcp --device=wlP1p1s0 --noipv6 --activate --hostname=train-controller.local --essid="${KICKSTART_WIFI_SSID}" --wpakey="${KICKSTART_WIFI_WPA_KEY}"
 
 ##
 ## Ostree installation
 ##
 
-# Use this line if creating an Edge Installer ISO that includes a local ostree commit
-ostreesetup --nogpg --osname=rhel --remote=edge --url=file:///run/install/repo/ostree/repo --ref=rhel/9/x86_64/jetson-orin-nano
+# Deploy a remote ostree
+ostreesetup --nogpg --osname=rhel --remote=edge --url="${KICKSTART_OSTREE_URL}" --ref="${KICKSTART_OSTREE_REF}"
 
 ##
 ## Post install scripts
@@ -66,7 +66,7 @@ ostreesetup --nogpg --osname=rhel --remote=edge --url=file:///run/install/repo/o
 %post --log=/var/log/anaconda/post-install.log --erroronfail
 # Add the pull secret to CRI-O and set root user-only read/write permissions
 cat > /etc/crio/openshift-pull-secret << 'EOF'
-__MICROSHIFT_PULL_SECRET__
+${KICKSTART_MICROSHIFT_PULL_SECRET}
 EOF
 chmod 600 /etc/crio/openshift-pull-secret
 
