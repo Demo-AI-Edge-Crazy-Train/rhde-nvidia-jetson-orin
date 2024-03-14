@@ -107,3 +107,16 @@ keyboard = "fr"
 
 [customizations.firewall]
 ports = ["22:tcp", "30000:tcp", "9090:tcp", "6443:tcp"]
+
+##
+## User
+##
+
+[[customizations.user]]
+name = "${BLUEPRINT_ADMIN_USERNAME}"
+description = "Admin"
+password = '${BLUEPRINT_ADMIN_PASSWORD}'
+key = "${BLUEPRINT_ADMIN_SSH_KEY}"
+home = "/home/${BLUEPRINT_ADMIN_USERNAME}/"
+shell = "/bin/bash"
+groups = ["users", "wheel"]

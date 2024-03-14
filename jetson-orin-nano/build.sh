@@ -2,8 +2,8 @@
 
 set -Eeuo pipefail
 
-echo "Preparing kickstarts from templates..."
-./prepare-kickstart.sh
+echo "Preparing kickstarts and blueprints from templates..."
+./prepare.sh
 
 KERNEL_CMDLINE="console=ttyTCU0"
 
