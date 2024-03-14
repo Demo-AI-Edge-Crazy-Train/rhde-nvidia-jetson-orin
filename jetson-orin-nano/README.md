@@ -3,6 +3,5 @@
 ## Usage
 
 ```sh
-./prepare-kickstart.sh
 ./build.sh
 ```

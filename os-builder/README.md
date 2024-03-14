@@ -1,4 +1,4 @@
-# ARM64 virtual machine
+# ARM64 Build server
 
 ## Pre-requisites
 
@@ -44,10 +44,4 @@ EOF
 ./prepare-cloud-init.sh
 terraform init
 terraform apply
-```
-
-## Post-install configuration
-
-```sh
-
 ```
