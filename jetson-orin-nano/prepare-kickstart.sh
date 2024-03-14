@@ -29,7 +29,7 @@ for i in "${ALL_CONFIG_VARS[@]}"; do
 done
 
 for template_file in kickstarts/*.cfg.template; do
-  kickstart_file="$(basename "$template_file" .template)"
+  kickstart_file="kickstarts/$(basename "$template_file" .template)"
   echo "$template_file -> $kickstart_file"
   envsubst "$shell_format" < "$template_file" > "$kickstart_file"
 done
