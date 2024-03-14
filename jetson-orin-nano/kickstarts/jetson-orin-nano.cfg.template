@@ -51,7 +51,7 @@ bootloader --append="console=ttyTCU0 crashkernel=1G-4G:256M,4G-64G:320M,64G-:576
 ##
 
 # Configure the first network device
-network  --bootproto=dhcp --device=wlP1p1s0 --noipv6 --activate --hostname=train-controller.local --essid="${KICKSTART_WIFI_SSID}" --wpakey="${KICKSTART_WIFI_WPA_KEY}"
+network --onboot=yes --bootproto=dhcp --device=wlP1p1s0 --noipv6 --activate --hostname=train-controller.local --essid="${KICKSTART_WIFI_SSID}" --wpakey="${KICKSTART_WIFI_WPA_KEY}"
 
 ##
 ## Ostree installation

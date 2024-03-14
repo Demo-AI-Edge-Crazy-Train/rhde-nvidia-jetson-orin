@@ -2,7 +2,7 @@
 
 set -Eeuo pipefail
 
-KERNEL_CMDLINE="console=ttyTCU0 inst.vnc"
+KERNEL_CMDLINE="console=ttyTCU0"
 
 for source_file in sources/*.toml; do
     composer-cli sources add "$source_file"
