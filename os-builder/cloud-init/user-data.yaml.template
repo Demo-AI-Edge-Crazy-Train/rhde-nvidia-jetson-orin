@@ -214,6 +214,15 @@ write_files:
     systemctl restart osbuild-composer
     usermod -a -G weldr "${CLOUD_INIT_ADMIN_USERNAME}"
 
+    # RHEL Beta specific steps
+    if grep -qi beta /etc/redhat-release; then
+      . /etc/os-release
+      mkdir -p /etc/osbuild-composer/repositories
+      cp /usr/share/osbuild-composer/repositories/rhel-$VERSION_ID.json /etc/osbuild-composer/repositories/rhel-$VERSION_ID.json
+      sed -i.bak "s|https://cdn.redhat.com/content/dist/rhel9/$VERSION_ID/|https://cdn.redhat.com/content/beta/rhel9/9/|g" /etc/osbuild-composer/repositories/rhel-$VERSION_ID.json
+      systemctl restart osbuild-composer.service
+    fi
+
     # Configure Nginx
     systemctl enable --now nginx.service
     mkdir -p /var/www
@@ -241,7 +250,9 @@ write_files:
 
     # Enable the required repos for Microshift
     subscription-manager config --rhsm.manage_repos=1
-    subscription-manager repos --enable rhocp-4.14-for-rhel-9-$(uname -m)-rpms --enable fast-datapath-for-rhel-9-$(uname -m)-rpms
+    subscription-manager repos --enable rhocp-4.14-for-rhel-9-$(uname -m)-rpms 
+    # The following command can fail on some systems (beta versions of RHEL, for instance)
+    subscription-manager repos --enable fast-datapath-for-rhel-9-$(uname -m)-rpms || true
 
     # Build the Minimal RHEL9 ostree
     composer-cli blueprints push /dev/fd/0 <<EOF
@@ -250,7 +261,7 @@ write_files:
     version = "1.1.0"
     modules = []
     groups = []
-    distro = "rhel-93"
+    distro = "rhel-94"
     EOF
     BUILDID=$(composer-cli compose start-ostree minimal-rhel9 edge-commit | awk '{print $2}')
     wait_for_compose "$BUILDID"
@@ -268,6 +279,11 @@ write_files:
     # Create misc. directories
     mkdir -p "$ISO_ROOT" "$OSTREE_TMP"
 
+    # Fix permissions on /var/www as required by the next build
+    chown root:wheel -R /var/www
+    chmod o+rX,g+rwX -R /var/www
+    restorecon -RF /var/www
+
     # Build the edge installer
     composer-cli blueprints push /dev/fd/0 <<EOF
     name = "edge-installer"
@@ -276,26 +292,20 @@ write_files:
     modules = []
     groups = []
     packages = []
+    distro = "rhel-94"
     EOF
     BUILDID=$(composer-cli compose start-ostree --url http://$PUBLIC_IP/ostree/ --ref empty edge-installer edge-installer | awk '{print $2}')
     wait_for_compose "$BUILDID"
     composer-cli compose image "${BUILDID}" --filename "$ISO_ROOT/edge-installer-empty-ostree.iso"
     composer-cli compose delete "${BUILDID}"
 
-    # Fix permissions on /var/www
-    chown root:admins -R /var/www
+    # Fix permissions on /var/www (finally!)
+    chown root:wheel -R /var/www
     chmod o+rX,g+rwX -R /var/www
     restorecon -RF /var/www
 
     # Finish the post-install as a regular user
     sudo -i -u ${CLOUD_INIT_ADMIN_USERNAME} /usr/local/bin/post-install-user.sh
-
-    # Install the specific version of the Kernel needed by the Nvidia kernel modules
-    # because right now composer-cli is hard coded to embed the kernel of the host.
-    dnf install -y kernel-5.14.0-362.24.1.el9_3
-    
-    # Initiate a reboot within two minutes to apply the new kernel
-    shutdown -r +2
 
     exit 0
   permissions: '0755'
@@ -320,14 +330,11 @@ runcmd:
 # Run the post-install script
 - [ "/usr/local/bin/post-install.sh" ]
 
-groups:
-- admins: [wheel]
-
 users:
 - name: ${CLOUD_INIT_ADMIN_USERNAME}
   gecos: Admin
   shell: /bin/bash
-  primary_group: admin
+  primary_group: wheel
   lock_passwd: false
   # mkpasswd -m sha512crypt
   passwd: ${CLOUD_INIT_ADMIN_PASSWORD}

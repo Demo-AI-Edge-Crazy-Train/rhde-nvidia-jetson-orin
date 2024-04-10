@@ -38,35 +38,35 @@ name = "Container Management"
 name =  "kernel"
 # Hardcode the kernel version needed by the Nvidia Kernel module.
 # Any mismatch prevent the ostree from being built.
-version = "5.14.0-362.24.1.el9_3"
+version = "5.14.0-427.el9"
 
 [[packages]]
 name =  "nvidia-jetpack-core"
-version = "36.3.0~20240205163447-1.el9"
+version = "36.3.0~20240326212127-1.el9"
 
 [[packages]]
 name = "nvidia-jetpack-kmod-firmware"
-version = "36.3.0~20240205163447-1.el9"
+version = "36.3.0~20240326212127-1.el9"
 
 [[packages]]
 name = "nvidia-jetpack-multimedia"
-version = "36.3.0~20240205163447-1.el9"
+version = "36.3.0~20240326212127-1.el9"
 
 [[packages]]
 name = "nvidia-jetpack-multimedia-utils"
-version = "36.3.0~20240205163447-1.el9"
+version = "36.3.0~20240326212127-1.el9"
 
 [[packages]]
 name = "nvidia-jetpack-kmod-modprobe"
-version = "36.3.0~20240205163447-1.el9"
+version = "36.3.0~20240326212127-1.el9"
 
 [[packages]]
 name = "nvidia-jetpack-tools"
-version = "36.3.0~20240205163447-1.el9"
+version = "36.3.0~20240326212127-1.el9"
 
 [[packages]]
 name = "nvidia-jetpack-kmod"
-version = "36.3.0~20240205163447-1.el9"
+version = "36.3.0~20240326212127-1.el9"
 
 [[packages]]
 name = "nvidia-container-toolkit-base"
@@ -81,6 +81,14 @@ version = "*"
 
 [[packages]]
 name = "greenboot-rpm-ostree-grub2"
+version = "*"
+
+[[packages]]
+name = "podman-compose"
+version = "*"
+
+[[packages]]
+name = "pciutils"
 version = "*"
 
 ##

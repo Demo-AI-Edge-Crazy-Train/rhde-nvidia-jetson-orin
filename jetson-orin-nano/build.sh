@@ -17,7 +17,7 @@ for blueprint_file in blueprints/*.toml; do
     echo "$(date +%T) Processing blueprint $blueprint..."
     
     echo "$(date +%T) Building ostree for $blueprint..."
-    BUILDID=$(composer-cli compose start-ostree "$blueprint" edge-commit --url "http://$PUBLIC_IP/ostree/" --ref "rhel/9/$(uname -m)/$blueprint" --parent "rhel/9/$(uname -m)/edge" | awk '{print $2}')
+    BUILDID=$(composer-cli compose start-ostree "$blueprint" edge-commit --url "http://$PUBLIC_IP/ostree/" --ref "rhel/9/$(uname -m)/$blueprint" --parent "rhel/9/$(uname -m)/edge" | awk '$1 == "Compose" {print $2}')
     wait_for_compose "$BUILDID"
     composer-cli compose image "${BUILDID}" --filename /tmp
     mkdir -p "$OSTREE_TMP/${BUILDID}-commit"
@@ -36,7 +36,7 @@ for blueprint_file in blueprints/*.toml; do
     fi
 
     echo "$(date +%T) Building edge-installer for $blueprint..."
-    BUILDID=$(composer-cli compose start-ostree --url "http://$PUBLIC_IP/ostree/" --ref "rhel/9/$(uname -m)/$blueprint" edge-installer edge-installer | awk '{print $2}')
+    BUILDID=$(composer-cli compose start-ostree --url "http://$PUBLIC_IP/ostree/" --ref "rhel/9/$(uname -m)/$blueprint" edge-installer edge-installer | awk '$1 == "Compose" {print $2}')
     wait_for_compose "$BUILDID"
     rm -f "$ISO_ROOT/edge-installer-$blueprint.iso"
     composer-cli compose image "${BUILDID}" --filename "$ISO_ROOT/edge-installer-$blueprint.iso"
