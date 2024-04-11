@@ -41,7 +41,7 @@ reqpart --add-boot
 # 10GB+ system root but leaving free space for the LVMS CSI driver for storing data.
 part pv.01 --size=1 --grow --ondisk=nvme0n1
 volgroup rhel pv.01
-logvol /  --fstype="xfs" --size=10240 --name=root --vgname=rhel
+logvol /  --fstype="xfs" --size=51200 --name=root --vgname=rhel
 
 # Configure the bootloader
 bootloader --append="console=ttyTCU0 crashkernel=1G-4G:256M,4G-64G:320M,64G-:576M cma=512M" --location=mbr --boot-drive=nvme0n1
