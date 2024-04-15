@@ -96,6 +96,14 @@ name = "pciutils"
 version = "*"
 
 [[packages]]
+name = "usbutils"
+version = "*"
+
+[[packages]]
+name = "kcat"
+version = "*"
+
+[[packages]]
 name = "bluez"
 version = "*"
 
