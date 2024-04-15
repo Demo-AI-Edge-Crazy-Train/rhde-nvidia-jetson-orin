@@ -142,4 +142,46 @@ nvidia-ctk config --set nvidia-container-cli.no-cgroups --in-place
 nvidia-ctk runtime configure --runtime=crio
 nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
 
+# Workaround for bluetooth firmware not loaded properly
+cat > /etc/systemd/bin/bluetooth-reset.sh <<"EOF"
+#!/bin/bash
+
+set -Eeuo pipefail
+
+while ! dmesg |grep -q "rtk_btusb: load_firmware done"; do
+  echo "Firmware of rtk_btusb not loaded properly!"
+  
+  for path in /sys/bus/usb/devices/[0-9]-[0-9]/; do
+    if [ ! -e "$path/idVendor" -o ! -e "$path/idProduct" ]; then
+      continue
+    fi
+    
+    vendor_id="$(cat $path/idVendor)"
+    product_id="$(cat $path/idProduct)"
+    if [ "$vendor_id:$product_id" == "13d3:3549" ]; then
+      echo "Rebooting device $vendor_id:$product_id..."
+      echo -n 0 > "$path/authorized"
+      sleep 2
+      echo -n 1 > "$path/authorized"
+      sleep 10
+    fi
+  done
+done
+EOF
+chmod a+x /etc/systemd/bin/bluetooth-reset.sh
+cat > /etc/systemd/system/bluetooth-reset.service << "EOF"
+[Unit]
+Description=Bluetooth controller reset
+Before=bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStart=/etc/systemd/bin/bluetooth-reset.sh
+
+[Install]
+RequiredBy=bluetooth.service
+EOF
+systemctl daemon-reload
+systemctl enable bluetooth-reset.service
+
 %end
