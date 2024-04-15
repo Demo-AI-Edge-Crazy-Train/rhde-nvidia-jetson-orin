@@ -99,10 +99,6 @@ version = "*"
 name = "bluez"
 version = "*"
 
-[[packages]]
-name = "bluez-deprecated"
-version = "*"
-
 ##
 ## Microshift
 ##
