@@ -113,4 +113,33 @@ sed -i.post-install -e "s/^%wheel\tALL=(ALL)\tALL/%wheel  ALL=(ALL)       NOPASS
 # Disable password authentication over SSH
 sed -i.post-install -e "s/PasswordAuthentication yes/PasswordAuthentication no/" /etc/ssh/sshd_config
 
+# Creating the Jetson modeset unbinding workaround
+mkdir /etc/systemd/bin
+cat > /etc/systemd/bin/jetson-modeset-unbind.sh <<"EOF"
+#!/bin/bash
+echo "chosen:framebuffer" | sudo tee /sys/devices/platform/chosen:framebuffer/driver/unbind
+EOF
+chmod a+x /etc/systemd/bin/jetson-modeset-unbind.sh
+cat << EOF > /etc/systemd/system/jetson-modeset-unbind.service
+[Unit]
+Description=Jetson Modesetting Unbinding service
+After=multi-user.target
+Wants=multi-user.target
+
+[Service]
+Type=simple
+ExecStart=/etc/systemd/bin/jetson-modeset-unbind.sh
+TimeoutStartSec=0
+
+[Install]
+WantedBy=graphical.target
+EOF
+systemctl daemon-reload
+systemctl enable jetson-modeset-unbind.service
+
+# Set libnvidia-containers
+nvidia-ctk config --set nvidia-container-cli.no-cgroups --in-place
+nvidia-ctk runtime configure --runtime=crio
+nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
+
 %end

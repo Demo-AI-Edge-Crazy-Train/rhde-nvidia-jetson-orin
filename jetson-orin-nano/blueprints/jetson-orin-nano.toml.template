@@ -41,6 +41,10 @@ name =  "kernel"
 version = "5.14.0-427.el9"
 
 [[packages]]
+name =  "nvidia-jetpack-all"
+version = "36.3.0~20240326212127-1.el9"
+
+[[packages]]
 name =  "nvidia-jetpack-core"
 version = "36.3.0~20240326212127-1.el9"
 
@@ -91,6 +95,14 @@ version = "*"
 name = "pciutils"
 version = "*"
 
+[[packages]]
+name = "bluez"
+version = "*"
+
+[[packages]]
+name = "bluez-deprecated"
+version = "*"
+
 ##
 ## Microshift
 ##
@@ -103,7 +115,7 @@ version = "*"
 hostname = "train-controller.local"
 
 [customizations.services]
-enabled = ["cockpit.socket", "sshd", "microshift"]
+enabled = ["cockpit.socket", "sshd", "microshift", "bluetooth"]
 
 [customizations.timezone]
 timezone = "Europe/Paris"
