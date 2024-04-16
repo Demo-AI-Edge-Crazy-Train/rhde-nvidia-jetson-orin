@@ -139,7 +139,7 @@ systemctl enable jetson-modeset-unbind.service
 
 # Set libnvidia-containers
 nvidia-ctk config --set nvidia-container-cli.no-cgroups --in-place
-nvidia-ctk runtime configure --runtime=crio
+nvidia-ctk runtime configure --runtime=crio --set-as-default --config=/etc/crio/crio.conf.d/99-nvidia.conf
 nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
 
 # Workaround for bluetooth firmware not loaded properly

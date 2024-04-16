@@ -76,6 +76,25 @@ version = "36.3.0~20240326212127-1.el9"
 name = "nvidia-container-toolkit-base"
 version = "*"
 
+[[packages]]
+name = "nvidia-container-toolkit"
+version = "*"
+
+[[packages]]
+name = "libnvidia-container1"
+version = "*"
+
+[[packages]]
+name = "libnvidia-container-tools"
+version = "*"
+
+##
+## Bluetooth
+##
+[[packages]]
+name = "bluez"
+version = "*"
+
 ##
 ## Misc.
 ##
@@ -104,7 +123,11 @@ name = "kcat"
 version = "*"
 
 [[packages]]
-name = "bluez"
+name = "tcpdump"
+version = "*"
+
+[[packages]]
+name = "htop"
 version = "*"
 
 ##
