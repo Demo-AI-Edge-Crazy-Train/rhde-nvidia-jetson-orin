@@ -134,9 +134,6 @@ TimeoutStartSec=0
 [Install]
 WantedBy=graphical.target
 EOF
-systemctl daemon-reload
-systemctl enable jetson-modeset-unbind.service
-
 # Set libnvidia-containers
 nvidia-ctk config --set nvidia-container-cli.no-cgroups --in-place
 nvidia-ctk runtime configure --runtime=crio
@@ -181,7 +178,29 @@ ExecStart=/etc/systemd/bin/bluetooth-reset.sh
 [Install]
 RequiredBy=bluetooth.service
 EOF
+
+# Workaround for bluetooth controller not activated by default
+cat > /etc/systemd/system/bluetooth-activate.service << "EOF"
+[Unit]
+Description=Bluetooth controller configuration
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStartPre=bluetoothctl show
+ExecStart=bluetoothctl power on
+ExecStart=bluetoothctl discoverable on
+ExecStart=bluetoothctl pairable on
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
 systemctl daemon-reload
+systemctl set-default multi-user.target
+systemctl enable jetson-modeset-unbind.service
 systemctl enable bluetooth-reset.service
+systemctl enable bluetooth-activate.service
 
 %end
