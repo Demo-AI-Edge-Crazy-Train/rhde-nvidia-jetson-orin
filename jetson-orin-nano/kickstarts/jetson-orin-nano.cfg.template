@@ -134,6 +134,7 @@ TimeoutStartSec=0
 [Install]
 WantedBy=graphical.target
 EOF
+
 # Set libnvidia-containers
 nvidia-ctk config --set nvidia-container-cli.no-cgroups --in-place
 nvidia-ctk runtime configure --runtime=crio
