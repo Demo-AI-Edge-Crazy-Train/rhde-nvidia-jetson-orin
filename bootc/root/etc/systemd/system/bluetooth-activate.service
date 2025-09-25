@@ -1,0 +1,11 @@
+[Unit]
+Description=Bluetooth controller configuration
+After=bluetooth.service
+Requires=bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStart=/bin/bash -c 'until (bluetoothctl power on && bluetoothctl discoverable on && bluetoothctl pairable on) || (( count++ >= 12 )); do echo "Failed. Retrying in 5 seconds..."; sleep 5; done'
+
+[Install]
+WantedBy=multi-user.target

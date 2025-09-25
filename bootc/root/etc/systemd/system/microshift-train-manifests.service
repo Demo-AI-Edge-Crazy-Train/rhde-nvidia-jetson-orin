@@ -1,0 +1,17 @@
+[Unit]
+Description=Microshift Manifests generation to deploy the Crazy Train demo
+Documentation=https://github.com/Demo-AI-Edge-Crazy-Train
+Wants=network-online.target
+After=network-online.target
+Before=microshift.service
+
+# If the manifests already exist, do not overwrite them!
+ConditionPathExists=!/etc/microshift/manifests.d/train/payload.yaml
+
+[Service]
+ExecStart=/usr/local/bin/bootstrap-microshift.sh
+Type=oneshot
+RemainAfterExit=yes
+
+[Install]
+WantedBy=multi-user.target

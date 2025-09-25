@@ -1,0 +1,144 @@
+##
+## Environment setup
+##
+
+# Install mode: text (interactive installs) or cmdline (unattended installs)
+text
+
+# French keyboard layout
+keyboard --vckeymap=fr --xlayouts='fr'
+
+# English i18n
+lang en_US.UTF-8 --addsupport fr_FR.UTF-8
+
+# Accept the EULA
+eula --agreed
+
+# Which action to perform after install: poweroff or reboot
+reboot
+
+# Timezone is GMT
+timezone Etc/GMT --utc
+
+##
+## network configuration
+##
+
+network --bootproto=dhcp --device=enP8p1s0 --onboot=on --activate
+
+##
+## partitioning
+##
+
+# Install on /dev/nvme0n1
+ignoredisk --only-use=nvme0n1
+
+# Clear the target disk
+zerombr
+
+# Remove existing partitions
+clearpart --all --initlabel
+
+# Automatically create partitions required by hardware platform
+reqpart --add-boot
+
+# Create a root and a /var partition
+# Partition disk such that it contains an LVM volume group called `rhel` with a
+# 10GB+ system root but leaving free space for the LVMS CSI driver for storing data.
+part pv.01 --size=1 --grow --ondisk=nvme0n1
+volgroup rhel pv.01
+logvol /  --fstype="xfs" --size=51200 --name=root --vgname=rhel
+
+# Configure the bootloader
+bootloader --location=mbr --boot-drive=nvme0n1
+
+##
+## Pre-installation
+##
+
+%pre --log=/tmp/pre-install.log --erroronfail
+set -Eeuo pipefail
+cat > /etc/ostree/auth.json << 'EOF'
+{
+        "auths": {
+                "quay.io": {
+                        "auth": "REDACTED"
+                }
+        }
+}
+EOF
+chmod 0600 /etc/ostree/auth.json
+%end
+
+##
+## Installation
+##
+
+rootpw --lock
+ostreecontainer --url="quay.io/demo-ai-edge-crazy-train/train-jetson-orin:latest" --transport=registry --no-signature-verification
+
+##
+## Post-installation
+##
+
+%post --log=/var/log/anaconda/post-install.log --erroronfail
+
+set -Eeuo pipefail
+
+# Inject ssh authorized keys
+mkdir -p /etc/ssh/authorized_keys/
+for user in admin root; do
+  cat > /etc/ssh/authorized_keys/$user.keys << 'EOF'
+ssh-ed25519 REDACTED user@hostname
+EOF
+  chown $user:$user /etc/ssh/authorized_keys/$user.keys
+  chmod 0644 /etc/ssh/authorized_keys/$user.keys
+done
+restorecon -Rf /etc/ssh/authorized_keys/
+
+# Inject flightctl initial configuration
+cat > /etc/flightctl/config.yaml << 'EOF'
+enrollment-service:
+  authentication:
+    client-certificate-data: REDACTED
+    client-key-data: REDACTED
+  enrollment-ui-endpoint: https://edge-manager.domain.tld:443
+  service:
+    certificate-authority-data: REDACTED
+    server: https://edge-manager.domain.tld:7443/
+management-service:
+  authentication: {}
+  service: {}
+spec-fetch-interval: 10s
+status-update-interval: 10s
+default-labels:
+  demo: lego-train
+  architecture: aarch64
+  platform: jetson-orin
+EOF
+chmod 600 /etc/flightctl/config.yaml
+
+cat > /etc/ostree/auth.json << 'EOF'
+{
+        "auths": {
+                "quay.io": {
+                        "auth": "REDACTED"
+                }
+        }
+}
+EOF
+chmod 0600 /etc/ostree/auth.json
+
+cat > /etc/crio/openshift-pull-secret << 'EOF'
+REDACTED
+EOF
+chmod 600 /etc/crio/openshift-pull-secret
+
+cat > /etc/default/bootstrap-microshift << 'EOF'
+kafkaBroker.username=train
+kafkaBroker.password=R3dH4t1!
+kafkaBroker.bootstrapNode.hostname=FOO.eu-west-3.elb.amazonaws.com
+EOF
+chmod 600 /etc/default/bootstrap-microshift
+
+%end
