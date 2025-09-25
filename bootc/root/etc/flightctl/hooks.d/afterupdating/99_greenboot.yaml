@@ -1,0 +1,4 @@
+- if:
+  - path: /etc/greenboot/check/
+    op: [created, updated, removed]
+  run: systemctl restart --no-block greenboot-healthcheck.service

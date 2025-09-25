@@ -1,0 +1,42 @@
+FROM quay.io/redhat-et/rhel-bootc-tegra:microshift
+
+ARG ADMIN_USERNAME=demo \
+    ADMIN_PASSWORD=redhat
+
+RUN <<EOF
+set -Eeuo pipefail
+
+# Enable EPEL and Ansible AAP repos
+dnf config-manager --enable ansible-automation-platform-2.5-for-rhel-9-$(arch)-rpms
+dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+
+# Install packages
+dnf install -y bluez pciutils usbutils kcat tcpdump htop stress-ng yq podman-compose tmux iptraf-ng mkpasswd \
+               cockpit cockpit-podman cockpit-podman cockpit-files cockpit-ostree cockpit-pcp cockpit-system
+dnf clean all
+
+# Create admin user if specified
+if [ -n "$ADMIN_USERNAME" ]; then
+  useradd -m -G wheel -p "$(echo -n "$ADMIN_PASSWORD" | mkpasswd -m bcrypt --stdin)" "$ADMIN_USERNAME"
+fi
+EOF
+
+ADD --chown=root:root root /
+
+RUN <<EOF
+set -Eeuo pipefail
+
+# Enable systemd services and sockets
+systemctl enable flightctl-agent.service cockpit.socket sshd.service bluetooth.service
+
+# Make sure the flightctl-agent is the only one that can apply updates
+systemctl mask bootc-fetch-apply-updates.timer
+
+# Set proper ownership and SELinux context on SSH authorized keys
+if [ -n "$ADMIN_USERNAME" -a -f "/etc/ssh/authorized_keys/$ADMIN_USERNAME.keys" ]; then
+  chown "$ADMIN_USERNAME:$ADMIN_USERNAME" "/etc/ssh/authorized_keys/$ADMIN_USERNAME.keys"
+fi
+semanage fcontext -a -t ssh_home_t "/etc/ssh/authorized_keys(/.*)?"
+restorecon -Rf /etc/ssh/authorized_keys
+
+EOF
