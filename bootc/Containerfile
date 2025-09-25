@@ -12,7 +12,8 @@ dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarc
 
 # Install packages
 dnf install -y bluez pciutils usbutils kcat tcpdump htop stress-ng yq podman-compose tmux iptraf-ng mkpasswd \
-               cockpit cockpit-podman cockpit-podman cockpit-files cockpit-ostree cockpit-pcp cockpit-system
+               cockpit cockpit-podman cockpit-podman cockpit-files cockpit-ostree cockpit-pcp cockpit-system \
+               flightctl-agent
 dnf clean all
 
 # Create admin user if specified
