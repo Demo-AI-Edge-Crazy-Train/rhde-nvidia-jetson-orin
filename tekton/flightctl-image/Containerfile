@@ -1,0 +1,17 @@
+FROM registry.access.redhat.com/ubi9/ubi:latest
+
+RUN <<EOF
+set -Eeuo pipefail
+echo "Disabling Subscription Manager..."
+echo -e "[main]\nenabled=0" > /etc/dnf/plugins/subscription-manager.conf
+echo "Installing flightctl..."
+dnf install -y https://download.copr.fedorainfracloud.org/results/%40redhat-et/flightctl/epel-9-$(arch)/09523645-flightctl/flightctl-cli-0.9.3-1.el9.$(arch).rpm
+echo "Installing yq (from EPEL)..."
+dnf install -y https://dl.fedoraproject.org/pub/epel/epel-release-latest-9.noarch.rpm
+dnf install -y yq
+echo "Cleaning up..."
+dnf clean all
+EOF
+
+ENTRYPOINT [ "/usr/bin/flightctl" ]
+CMD [ ]

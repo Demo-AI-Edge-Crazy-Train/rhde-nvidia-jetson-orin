@@ -1,0 +1,97 @@
+apiVersion: tekton.dev/v1beta1
+kind: Pipeline
+metadata:
+  name: bootc2
+spec:
+
+  workspaces:
+  - name: source-workspace
+    description: Workspace containing source code (from git)
+  - name: registry-token
+    description: An optional workspace that allows providing a .docker/config.json file for Buildah to access the container registry. The file should be placed at the root of the Workspace with name config.json or .dockerconfigjson.
+    optional: true
+  - name: git-auth
+    description: An optional workspace that allows providing SSH keys or .gitconfig file for git authentication. The SSH keys should be placed at the root of the Workspace with names id_rsa and id_rsa.pub. The .gitconfig file should also be placed at the root of the Workspace with name .gitconfig.
+    optional: true
+  - name: flightctl-config
+    description: An optional workspace that contains the flightctl configuration file (client.yaml).
+    optional: true
+  - name: etc-pki-entitlement
+    description: A workspace that provides access to the Red Hat entitlement certificate for pulling Red Hat UBI and RHEL container images.
+    optional: true
+
+  params:
+  - name: git-url
+    type: string
+  - name: git-revision
+    type: string
+    default: main
+  - name: image-name
+    type: string
+  - name: override-from
+    description: Replaces the "FROM" instruction in the Containerfile with this value if set.
+    type: string
+    default: ""
+  - name: context-dir
+    type: string
+    default: "."
+  - name: containerfile-path
+    type: string
+    default: "Containerfile"
+  - name: fleet-label-selector
+    description: The label selector to identify the fleet(s) to update. If not provided, no fleets will be updated!
+    type: string
+    default: ""
+
+  tasks:
+
+  - name: clone-repo
+    taskRef:
+      kind: Task
+      name: git
+    params:
+    - name: URL
+      value: $(params.git-url)
+    - name: REVISION
+      value: $(params.git-revision)
+    workspaces:
+    - name: output
+      workspace: source-workspace
+    - name: basic-auth
+      workspace: git-auth
+  
+  - name: buildah
+    runAfter: ["clone-repo"]
+    taskRef:
+      name: buildah
+    params:
+    - name: context-dir
+      value: $(params.context-dir)
+    - name: containerfile-path
+      value: $(params.containerfile-path)
+    - name: override-from
+      value: $(params.override-from)
+    - name: image-name
+      value: $(params.image-name)
+    workspaces:
+    - name: source-workspace
+      workspace: source-workspace
+    - name: dockerconfig
+      workspace: registry-token
+    - name: etc-pki-entitlement
+      workspace: etc-pki-entitlement
+
+  - name: flightctl-update-digest
+    runAfter: ["buildah"]
+    taskRef:
+      name: flightctl-update-digest
+    params:
+    - name: image-name
+      value: $(params.image-name)
+    - name: new-image-digest
+      value: $(tasks.buildah.results.image-digest)
+    - name: fleet-label-selector
+      value: "$(params.fleet-label-selector)"
+    workspaces:
+    - name: flightctl-config
+      workspace: flightctl-config

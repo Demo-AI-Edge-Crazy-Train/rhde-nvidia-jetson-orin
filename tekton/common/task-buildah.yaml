@@ -1,0 +1,119 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  annotations:
+    io.openshift.builder: 'true'
+  name: buildah
+spec:
+  params:
+  - name: context-dir
+    type: string
+    default: .
+  - name: containerfile-path
+    type: string
+    default: Containerfile
+  - name: override-from
+    description: Replaces the "FROM" instruction in the Containerfile with this value if set.
+    type: string
+    default: ""
+  - name: image-name
+    type: string
+  results:
+  - name: image-digest
+    description: The digest of the built image
+  workspaces:
+  - name: source-workspace
+    description: Workspace containing source code
+  - description: An optional workspace that allows providing a .docker/config.json file for Buildah to access the container registry. The file should be placed at the root of the Workspace with name config.json or .dockerconfigjson.
+    name: dockerconfig
+    optional: true
+  - name: etc-pki-entitlement
+    description: A workspace that provides access to the Red Hat entitlement certificate for pulling Red Hat UBI and RHEL container images.
+    mountPath: /etc/pki/entitlement
+    optional: true
+  volumes:
+  - name: container-storage
+    emptyDir: {}
+  steps:
+  - name: buildah
+    image: registry.redhat.io/rhel9/buildah:9.6
+    env:
+    - name: STORAGE_DRIVER
+      value: vfs
+    - name: SCRIPT_DEBUG
+      value: "false"
+    - name: OVERRIDE_FROM
+      value: "$(params.override-from)"
+    script: |
+      #!/bin/bash
+      set -Eeuo pipefail
+
+      # If debug is enabled, print out command that are executed
+      if [[ "${SCRIPT_DEBUG:-false}" == "true" ]]; then
+        set -x
+      fi
+
+      # Print versions of the program we use
+      echo "=== Environment ==="
+      echo "---> Buildah"
+      buildah version
+      echo
+      echo "---> bash"
+      bash --version
+      echo
+      echo "---> OS"
+      cat /etc/redhat-release
+      echo
+      echo "---> Host"
+      uname -a
+      echo
+      echo "---> Current user"
+      id
+      echo
+
+      # Checks if etc-pki-entitlement workspace is bound
+      if [[ "$(workspaces.etc-pki-entitlement.bound)" == "true" ]]; then
+        echo "---> Entitlement certificates"
+        ls -lL /etc/pki/entitlement/*.pem
+        echo
+      fi
+
+      # Handle registry credentials
+      if [[ "$(workspaces.dockerconfig.bound)" == "true" ]]; then
+        if test -f "$(workspaces.dockerconfig.path)/config.json"; then
+          export DOCKER_CONFIG="$(workspaces.dockerconfig.path)"
+        elif test -f "$(workspaces.dockerconfig.path)/.dockerconfigjson"; then
+          cp "$(workspaces.dockerconfig.path)/.dockerconfigjson" "$HOME/.docker/config.json"
+          export DOCKER_CONFIG="$HOME/.docker"
+        else
+          echo "neither 'config.json' nor '.dockerconfigjson' found at workspace root"
+          exit 1
+        fi
+      fi
+
+      echo "=== Build ==="
+      echo "---> Building image for $(uname -m)"
+      declare -a BUILDAH_OPTS=( )
+      BUILDAH_OPTS+=( "-f" "$(workspaces.source-workspace.path)/$(params.containerfile-path)" )
+      BUILDAH_OPTS+=( "--no-cache" )
+      BUILDAH_OPTS+=( "-t" "localhost/image:$(uname -m)" )
+      if [ -n "${OVERRIDE_FROM:-}" ]; then
+        echo "Overriding FROM instruction with: $OVERRIDE_FROM"
+        BUILDAH_OPTS+=( "--from" "$OVERRIDE_FROM" )
+      fi
+      BUILDAH_OPTS+=(  )
+      BUILDAH_OPTS+=( "$(workspaces.source-workspace.path)/$(params.context-dir)" )
+      buildah build "${BUILDAH_OPTS[@]}"
+      
+      echo
+      echo "=== Push ==="
+      echo "---> Pushing image to $(params.image-name)..."
+      buildah push "--digestfile" "$(results.image-digest.path)" "localhost/image:$(uname -m)" "docker://$(params.image-name)"
+
+    securityContext:
+      capabilities:
+        add:
+          - SETFCAP
+    volumeMounts:
+    - name: container-storage
+      mountPath: /var/lib/containers

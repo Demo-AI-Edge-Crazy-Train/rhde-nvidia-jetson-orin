@@ -1,0 +1,58 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: bootc2-
+spec:
+  pipelineRef:
+    name: bootc2
+  params:
+  - name: git-url
+    value: https://github.com/Demo-AI-Edge-Crazy-Train/rhde-nvidia-jetson-orin.git
+  - name: git-revision
+    value: main
+  - name: image-name
+    value: quay.io/demo-ai-edge-crazy-train/train-jetson-orin:latest
+  - name: context-dir
+    value: bootc
+  - name: containerfile-path
+    value: "bootc/Containerfile"
+  - name: fleet-label-selector
+    value: "" # TODO: Add fleet label selector to update fleets after image build
+  workspaces:
+  - name: source-workspace
+    volumeClaimTemplate:
+      spec:
+        storageClassName: efs-csi
+        accessModes:
+        - ReadWriteMany
+        resources:
+          requests:
+            storage: 1Gi
+  - name: registry-token
+    secret:
+      secretName: quay-authentication
+  - name: git-auth
+    secret:
+      secretName: github-authentication
+  - name: flightctl-config
+    secret:
+      secretName: flightctl-config
+  - name: etc-pki-entitlement
+    secret:
+      secretName: etc-pki-entitlement
+      items:
+      - key: aarch64.pem
+        path: aarch64.pem
+      - key: aarch64-key.pem
+        path: aarch64-key.pem
+  taskRunTemplate:
+    serviceAccountName: buildbot
+  taskRunSpecs:
+  - pipelineTaskName: buildah
+    podTemplate:
+      nodeSelector:
+        beta.kubernetes.io/arch: arm64
+      tolerations:
+      - key: "emea-open-demo.redhat.com/arm64-architecture"
+        operator: "Exists"
+        effect: "NoSchedule"

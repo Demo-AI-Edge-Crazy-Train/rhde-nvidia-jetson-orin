@@ -1,0 +1,5 @@
+resources:
+- serviceaccount-buildbot.yaml
+- task-flightctl-update-digest.yaml
+- task-buildah.yaml
+- task-git.yaml

@@ -1,0 +1,79 @@
+apiVersion: tekton.dev/v1beta1
+kind: Task
+metadata:
+  name: flightctl-update-digest
+spec:
+  params:
+  - name: image-name
+    type: string
+  - name: new-image-digest
+    type: string
+  - description: The label selector to identify the fleet(s) to update.
+    name: fleet-label-selector
+    type: string
+    default: ""
+  workspaces:
+  - description: An optional workspace that contains the flightctl configuration file (client.yaml).
+    name: flightctl-config
+    optional: true
+  steps:
+  - name: flightctl-update-digest
+    image: quay.io/nmasse-redhat/flightctl:latest
+    env:
+    - name: SCRIPT_DEBUG
+      value: "false"
+    - name: FLEET_LABEL_SELECTOR
+      value: "$(params.fleet-label-selector)"
+    - name: IMAGE_NAME
+      value: "$(params.image-name)"
+    - name: NEW_IMAGE_DIGEST
+      value: "$(params.new-image-digest)"
+    script: |
+      #!/bin/bash
+      set -Eeuo pipefail
+
+      # If debug is enabled, print out command that are executed
+      if [[ "${SCRIPT_DEBUG:-false}" == "true" ]]; then
+        set -x
+      fi
+
+      # Check if the fleet label selector is set
+      if [ -z "${FLEET_LABEL_SELECTOR}" ]; then
+        echo "FLEET_LABEL_SELECTOR is not set. No action taken."
+        exit 0
+      fi
+
+      # Print versions of the program we use
+      echo "=== Environment ==="
+      echo "---> flightctl"
+      flightctl version
+      echo
+      echo "---> bash"
+      bash --version
+      echo
+      echo "---> OS"
+      cat /etc/redhat-release
+      echo
+      echo "---> yq"
+      yq --version
+      echo
+      echo "---> Current user"
+      id
+      echo
+      echo "---> flightctl"
+      flightctl version
+      echo
+
+      # List fleets matching the label selector and update their image to the new digest
+      flightctl --config-dir $(workspaces.flightctl-config.path) get fleets --limit 0 -l "${FLEET_LABEL_SELECTOR}" -o name | while read -r fleet; do
+        echo "Updating fleet $fleet to image ${IMAGE_NAME}@${NEW_IMAGE_DIGEST}"
+
+        # Get the current fleet definition
+        flightctl --config-dir $(workspaces.flightctl-config.path) get fleet/$fleet -o yaml > /tmp/fleet.yaml
+
+        # Update the fleet definition with the new image
+        yq eval -i ".spec.template.spec.os.image = \"${IMAGE_NAME}@${NEW_IMAGE_DIGEST}\"" /tmp/fleet.yaml
+
+        # Apply the updated fleet definition
+        flightctl --config-dir $(workspaces.flightctl-config.path) apply -f /tmp/fleet.yaml
+      done
