@@ -42,12 +42,12 @@ clearpart --all --initlabel
 # Automatically create partitions required by hardware platform
 reqpart --add-boot
 
-# Create a root and a /var partition
-# Partition disk such that it contains an LVM volume group called `rhel` with a
-# 10GB+ system root but leaving free space for the LVMS CSI driver for storing data.
-part pv.01 --size=1 --grow --ondisk=nvme0n1
-volgroup rhel pv.01
-logvol /  --fstype="xfs" --size=51200 --name=root --vgname=rhel
+# Create a primary root partition for the system
+# Partition disk such that it contains an empty LVM volume group called `microshift`,
+# leaving free space for the LVMS CSI driver for storing data.
+part / --fstype xfs --size=51200 --asprimary --label=root
+part pv.01 --size=1 --grow
+volgroup microshift pv.01
 
 # Configure the bootloader
 bootloader --location=mbr --boot-drive=nvme0n1
@@ -134,11 +134,15 @@ REDACTED
 EOF
 chmod 600 /etc/crio/openshift-pull-secret
 
+# Inject microshift's manifest initial configuration
 cat > /etc/default/bootstrap-microshift << 'EOF'
 kafkaBroker.username=train
 kafkaBroker.password=R3dH4t1!
 kafkaBroker.bootstrapNode.hostname=FOO.eu-west-3.elb.amazonaws.com
 EOF
 chmod 600 /etc/default/bootstrap-microshift
+
+# Fix for LV/VG/PV disappearing on second reboot...
+lvmdevices --adddev /dev/nvme0n1p4
 
 %end

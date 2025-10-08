@@ -1,0 +1,4 @@
+device-classes:
+- name: default
+  volume-group: microshift
+  default: true

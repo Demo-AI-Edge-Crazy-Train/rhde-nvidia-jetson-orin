@@ -29,10 +29,15 @@ set -Eeuo pipefail
 
 # Enable systemd services and sockets
 systemctl enable flightctl-agent.service cockpit.socket sshd.service bluetooth.service \
-                 bluetooth-reset.service bluetooth-activate.service microshift-train-manifests.service
+                 bluetooth-init.service microshift-train-manifests.service
 
 # Make sure the flightctl-agent is the only one that can apply updates
 systemctl mask bootc-fetch-apply-updates.timer
+
+# Unmask and enable NVIDIA Power Management services
+# The symbolic link /etc/nvpmodel.conf targets the correct config for Jetson Orin Nano
+#systemctl unmask nvpmodel.service nvpower.service
+#systemctl enable nvpmodel.service nvpower.service
 
 # Set proper ownership and SELinux context on SSH authorized keys
 if [ -n "$ADMIN_USERNAME" -a -f "/etc/ssh/authorized_keys/$ADMIN_USERNAME.keys" ]; then

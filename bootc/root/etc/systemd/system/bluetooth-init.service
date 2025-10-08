@@ -1,0 +1,10 @@
+[Unit]
+Description=Bluetooth controller initialization
+After=bluetooth.service
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/bluetooth-init.sh
+
+[Install]
+RequiredBy=bluetooth.service
