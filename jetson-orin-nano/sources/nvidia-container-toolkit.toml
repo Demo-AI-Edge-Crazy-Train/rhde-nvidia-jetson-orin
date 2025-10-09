@@ -1,8 +1,0 @@
-id = "nvidia-container-toolkit"
-name = "NVIDIA Container Toolkit"
-type = "yum-baseurl"
-url = "https://nvidia.github.io/libnvidia-container/stable/rpm/aarch64"
-check_gpg = false
-check_ssl = true
-system = false
-rhsm = false
