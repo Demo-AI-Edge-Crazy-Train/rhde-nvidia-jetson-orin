@@ -5,6 +5,7 @@ After=bluetooth.service
 [Service]
 Type=oneshot
 ExecStart=/usr/local/bin/bluetooth-init.sh
+RemainAfterExit=yes
 
 [Install]
 RequiredBy=bluetooth.service
