@@ -9,4 +9,3 @@ RemainAfterExit=yes
 
 [Install]
 RequiredBy=bluetooth.service
-RemainAfterExit=yes
