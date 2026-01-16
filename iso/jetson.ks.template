@@ -153,6 +153,6 @@ EOF
 chmod 600 /etc/default/bootstrap-microshift
 
 # Fix for LV/VG/PV disappearing on second reboot...
-lvmdevices --adddev /dev/nvme0n1p4
+lvmdevices --adddev /dev/nvme0n1p3
 
 %end
