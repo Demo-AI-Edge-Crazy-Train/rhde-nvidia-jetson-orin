@@ -46,4 +46,9 @@ fi
 semanage fcontext -a -t ssh_home_t "/etc/ssh/authorized_keys(/.*)?"
 restorecon -Rf /etc/ssh/authorized_keys
 
+# Temporary workaround to enable NVIDIA CRI-O integration
+if [ -f /etc/crio/conf.d/99-nvidia.toml ]; then
+  ln -s -v ../conf.d/99-nvidia.toml /etc/crio/crio.conf.d/99-nvidia.conf
+fi
+
 EOF
