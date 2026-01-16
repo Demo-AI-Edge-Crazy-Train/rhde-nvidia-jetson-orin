@@ -136,9 +136,20 @@ chmod 600 /etc/crio/openshift-pull-secret
 
 # Inject microshift's manifest initial configuration
 cat > /etc/default/bootstrap-microshift << 'EOF'
-kafkaBroker.username=train
-kafkaBroker.password=R3dH4t1!
-kafkaBroker.bootstrapNode.hostname=FOO.eu-west-3.elb.amazonaws.com
+##
+## External Kafka
+##
+#kafkaBroker.username=train
+#kafkaBroker.password=R3dH4t1!
+#kafkaBroker.bootstrapNode.hostname=FOO.eu-west-3.elb.amazonaws.com
+#kafka.enabled=false
+#monitoringApp.enabled=false
+
+##
+## Built-in Kafka
+##
+#
+# <this is the default>
 EOF
 chmod 600 /etc/default/bootstrap-microshift
 

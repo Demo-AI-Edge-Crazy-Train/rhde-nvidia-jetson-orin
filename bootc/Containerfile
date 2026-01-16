@@ -1,4 +1,4 @@
-FROM quay.io/redhat-et/rhel-bootc-tegra:microshift
+FROM quay.io/redhat-et/rhel-bootc-tegra:microshift-raw
 
 ARG ADMIN_USERNAME=admin \
     ADMIN_PASSWORD=redhat
